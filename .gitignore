@@ -4,6 +4,7 @@
 
 # Generated Python files
 *.pyc
+nyansat.egg-info/
 
 # mpfshell build files
 nyanshell/build/*

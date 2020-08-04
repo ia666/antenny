@@ -16,7 +16,9 @@ setup(
         "pyserial",
         "rbs-tui-dom",
         "skyfield",
-        "websocket_client"
+        "websocket_client",
+        "python-Levenshtein",
+        "mpfshell",
     ],
     keywords=["micropython", ],
     classifiers=[],

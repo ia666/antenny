@@ -1,8 +1,13 @@
 # src/config.py
 
-# import json as ujson # Uncomment this line for local testing
-
-import ujson
+try:
+    import ujson as json
+except ImportError:
+    import json
+try:
+    import logging
+except ImportError:
+    pass
 import os
 
 
@@ -20,7 +25,10 @@ class ConfigRepository:
         "last_loaded": "config.json",
         # Disable optional hardware features
         "use_gps": False,
-        "use_screen": True,
+        "use_screen": False,
+        "use_telemetry": False,
+        "use_imu": False,
+        "use_webrepl": False,
         # Elevation/azimuth servo defaults
         "elevation_servo_index": 0,
         "azimuth_servo_index": 1,
@@ -34,8 +42,10 @@ class ConfigRepository:
         "i2c_servo_address": 64,
         "i2c_bno_scl": 18,
         "i2c_bno_sda": 19,
+        "i2c_bno_address": 40,
         "i2c_screen_scl": 25,
         "i2c_screen_sda": 26,
+        "i2c_screen_address": 0,
         # IMU calibration - cf. section 3.6.4 "Sensor calibration data" in
         # Bosch BNO055 datasheet. Default values are all zero
         "acc_offset_x_lsb": 0,
@@ -70,7 +80,7 @@ class ConfigRepository:
     def _save(self) -> None:
         """Dump in-memory configuration values to a file on the board."""
         with open(self._config_filename, "w") as f:
-            ujson.dump(self._config, f)
+            json.dump(self._config, f)
 
     def reload(self) -> None:
         """Reload the in-memory configuration key-value store from the config
@@ -80,29 +90,43 @@ class ConfigRepository:
         Note: it is possible to enter an infinite loop if configs have
         "last_loaded" values that point to one another.
         """
-        last_loaded = ConfigRepository.DEFAULT_CONFIG.get("last_loaded")
+        default_config = ConfigRepository.DEFAULT_CONFIG.get("last_loaded")
+        last_loaded = default_config
 
         try:
             if self._config_filename:
                 with open(self._config_filename, "r") as f:
-                    self._config = ujson.load(f)
+                    self._config = json.load(f)
             else:
+                loaded = set()
                 while self._config_filename != last_loaded:
                     # Set config filename to the default value
                     self._config_filename = last_loaded
                     with open(self._config_filename, "r") as f:
-                        self._config = ujson.load(f)
+                        self._config = json.load(f)
                     last_loaded = self._config.get("last_loaded",
                                                    self._config_filename)
+                    if (last_loaded in loaded
+                            and last_loaded != self._config_filename):
+                        try:
+                            logging.error("Cyclic config files! Using default: "
+                                          + default_config)
+                        except (NameError, AttributeError):
+                            pass
+                        self._config_filename = default_config
+                        self.reload()
+                        self._config["last_loaded"] = self._config_filename
+                    else:
+                        loaded.add(last_loaded)
         except OSError:
             self._config = dict(ConfigRepository.DEFAULT_CONFIG)
+            self._config["last_loaded"] = self._config_filename
 
     def new(self, name: str) -> None:
         """Create a new configuration file and ensure each call to "reload" uses
         the correct file. Does not overwrite if the file already exists.
         """
-        if self._config_filename == ConfigRepository.DEFAULT_CONFIG["last_loaded"]:
-            self.set("last_loaded", name)
+        self.set("last_loaded", name)
         self._config_filename = name
         self.reload()
 
@@ -149,14 +173,14 @@ class ConfigRepository:
         if self._config:
             print("Config values:")
             for key, val in self._config.items():
-                print("%s: %s" % (key, ujson.dumps(val)))
+                print("%s: %s" % (key, json.dumps(val)))
             print()
         else:
             print("No non-default configuration values set!")
 
         print("Default values:")
         for key, val in ConfigRepository.DEFAULT_CONFIG.items():
-            print("%s: %s" % (key, ujson.dumps(val)))
+            print("%s: %s" % (key, json.dumps(val)))
         print()
 
     def clear(self, backup: bool = True) -> None:
