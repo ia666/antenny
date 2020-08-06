@@ -4,7 +4,7 @@ Make your own base station to communicate with satellites!
 
 ## Setting Up
 
-These set up procedures expect that your base station is fully assembled and your ESP32 is flashed with Micropython firmware. If not, check the NyanSat website for detailed steps on how to assemble your hardware, plus some tips on avoiding common pitfalls.
+These set up procedures expect that your base station is fully assembled and your ESP32 is flashed with Micropython firmware. If not, check the [NyanSat website](https://nyan-sat.com) for detailed steps on how to assemble your hardware, plus some tips on avoiding common pitfalls. If you have an official Antenny board, you can also take a look at our [Getting Started Guide](https://github.com/RedBalloonShenanigans/antenny/blob/master/hardware/Antenny_board_hardware_setup_guide.pdf).
 
 ### Set up your host environment
 
@@ -35,6 +35,8 @@ The device is not connected automatically. You have several options to connect t
 ```
 open <your ESP32's serial port>
 ```
+
+**Note:** If you're on a UNIX or Linux based system, your serial port is likely at `/dev/tty.<port>`. You can leave out `/dev/` for this step.
 
 ### Connecting Via WebREPL
 
@@ -67,13 +69,13 @@ AntKontrol attempts to integrate different hardware into one interface. It is us
 
 ![Querying AntKontrol's Status](doc_images/safe_mode.png)
 
-One of the main reasons why AntKontrol would enter SAFE MODE is an incorrect configuration. Depending on your setup, you may have a different pin layout, device addresses, or hardware than what NyanSat is expecting. Accordingly, you can use the `setup`, `i2ctest`, `pwmtest`, and `bnotest` commands to resolve the first two issues. For different hardware, the `repl` command provides you with a full Python interpreter, which you can use to implement your own exciting hardware. **Note:** If you wish to use the `repl` command, start nyanshell with the command `python3 -m nyansat.host.shell`; this command removes all decorative and telemetry elements, proviving a focused environment for debugging.
+One of the main reasons why AntKontrol would enter SAFE MODE is an incorrect configuration. Depending on your setup, you may have a different pin layout, device addresses, or hardware than what NyanSat is expecting. Accordingly, you can use the `setup`, `i2ctest`, `pwmtest`, and `bnotest` commands to resolve the first two issues. For different hardware, the `repl` command provides you with a full Python interpreter, which you can use to implement your own exciting hardware. **Note:** If you wish to use the `repl` command, start nyanshell with the command `python3 -m nyansat.host.shell`; this command removes all decorative and telemetry elements, providing a focused environment for debugging.
 
 By default, several features are disabled for the initial setup; this is to reduce debugging complexity. As you get familiar with the shell and hardware, you can choose to enable them using the `configs` and `set` commands to query and modify your configuration respectively.
 
 ### Moving Your Motors
 
-After you are comfortable with your setup and everything appears to be initialized, you can start your base station by running the command `startmotion <azimuth> <elevation>`, where `<azimuth>` and `<elevation>` correspond to the initial position you would like your base station to be. To tweak either the elevation or azimuth, type `azimuth/elevation <your desired value>` into the nyanshell commandline.
+After you are comfortable with your setup and everything appears to be initialized, you can start your base station by running the command `startmotion <azimuth> <elevation>`, where `<azimuth>` and `<elevation>` correspond to the initial position you would like your base station to be. **Note:** Please only run this command once after starting `antkontrol`. To tweak either the azimuth or elevation, type `azimuth/elevation <your desired value>` into the nyanshell commandline. A reasonable value would be any float from 10-90.
 
 ## Features
 

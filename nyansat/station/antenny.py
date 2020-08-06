@@ -1,4 +1,6 @@
 import logging
+import machine
+import _thread
 
 from config.config import ConfigRepository
 from gps.gps_basic import BasicGPSController
@@ -58,6 +60,7 @@ class AntennaController:
         self.azimuth = azimuth
         self.elevation = elevation
         self._motion_started = False
+        self.pin_interrupt = True
 
     def start_motion(self, azimuth: int, elevation: int):
         """
@@ -93,6 +96,32 @@ class AntennaController:
         if not self._motion_started:
             raise RuntimeError("Please start motion before querying the elevation position")
         return self.elevation.get_motor_position()
+
+    def pin_motion_test(self, p):
+        p.irq(trigger=0, handler=self.pin_motion_test)
+        interrupt_pin = machine.Pin(15, machine.Pin.IN, machine.Pin.PULL_DOWN)
+        LOG.info("Pin 4 has been pulled down")
+        LOG.info("Entering Motor Demo State")
+        LOG.info("To exit this state, reboot the device")
+        _thread.start_new_thread(self.move_thread, ())
+
+    def move_thread(self):
+        import time
+        LOG.info("Entering move thread, starting while loop")
+        self.elevation.set_motor_position(45)
+        time.sleep(5)
+        self.azimuth.set_motor_position(45)
+        time.sleep(10)
+        while True:
+            self.elevation.set_motor_position(20)
+            time.sleep(1)
+            self.azimuth.set_motor_position(20)
+            time.sleep(15)
+            self.elevation.set_motor_position(70)
+            time.sleep(1)
+            self.azimuth.set_motor_position(70)
+            time.sleep(15)
+
 
 
 class AntennyAPI:
@@ -247,32 +276,23 @@ def esp32_antenna_api_factory():
         LOG.info("I2C Channel 0 is same as Channel 1; using chained bus")
     else:
         i2c_ch1 = machine.I2C(
-            1,
+            -1,
             scl=Pin(i2c_bno_scl, Pin.OUT, Pin.PULL_DOWN),
             sda=Pin(i2c_bno_sda, Pin.OUT, Pin.PULL_DOWN),
+            freq=1000,
         )
 
     if config.get("use_imu"):
         try:
             imu = Bno055ImuController(
                 i2c_ch1,
+                crystal=False,
                 address=config.get("i2c_bno_address"),
                 sign=(0, 0, 0)
             )
         except OSError:
-            address = i2c_ch1.scan()
-            if (i2c_ch0 != i2c_ch1) and (len(address) != 0):
-                imu = Bno055ImuController(
-                    i2c_ch1,
-                    crystal=False,
-                    address=address[0],
-                    sign=(0, 0, 0)
-                )
-                LOG.info("Using auto address configuration for IMU")
-            else:
-                LOG.warning("Unable to initialize IMU, check configuration")
-                LOG.warning("NOTE: Auto address configuration is not supported in chained I2C mode")
-                imu = MockImuController()
+            LOG.warning("Unable to initialize IMU, check configuration")
+            imu = MockImuController()
     else:
         LOG.warning("IMU disabled, please set use_imu=True in the settings and run `antkontrol`")
         imu = MockImuController()
@@ -336,7 +356,7 @@ def esp32_antenna_api_factory():
         gps = BasicGPSController()
     else:
         LOG.warning(
-                "GPS disabled, please set use_gps=True in the settings and run `antkontrol`."
+            "GPS disabled, please set use_gps=True in the settings and run `antkontrol`."
         )
         gps = MockGPSController()
     telemetry_sender = None
@@ -359,5 +379,9 @@ def esp32_antenna_api_factory():
         telemetry_sender,
         safe_mode,
     )
+    if config.get("enable_demo"):
+        interrupt_pin = machine.Pin(15, machine.Pin.IN, machine.Pin.PULL_UP)
+        interrupt_pin.irq(trigger=machine.Pin.IRQ_FALLING, handler=api.antenna.pin_motion_test)
+
     api.start()
     return api

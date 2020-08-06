@@ -29,11 +29,14 @@ class ConfigRepository:
         "use_telemetry": False,
         "use_imu": False,
         "use_webrepl": False,
+        "enable_demo": True,
         # Elevation/azimuth servo defaults
         "elevation_servo_index": 0,
         "azimuth_servo_index": 1,
         "elevation_max_rate": 0.1,
         "azimuth_max_rate": 0.1,
+        # Antenny board layout
+        "antenny_board_version": 2,
         # Pins
         "gps_uart_tx": 33,
         "gps_uart_rx": 27,
@@ -46,6 +49,9 @@ class ConfigRepository:
         "i2c_screen_scl": 25,
         "i2c_screen_sda": 26,
         "i2c_screen_address": 0,
+        # Position coordinates
+        "latitude": 40.0,
+        "longitude": -73.0,
         # IMU calibration - cf. section 3.6.4 "Sensor calibration data" in
         # Bosch BNO055 datasheet. Default values are all zero
         "acc_offset_x_lsb": 0,

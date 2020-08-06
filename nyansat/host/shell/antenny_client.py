@@ -32,9 +32,12 @@ class AntennyClient(object):
         self.invoker = None
         self.tracking = None
         self.prompts = {
+            "antenny_board_version": ("Antenny Board Version (integer, -1 for DIY)", int),
             "gps_uart_tx": ("GPS UART TX pin#", int),
             "gps_uart_rx": ("GPS UART RX pin#", int),
             "use_gps": ("Use GPS (True or False)", bool),
+            "latitude": ("Current position latitude (ignore if using GPS)", float),
+            "longitude": ("Current position longitude (ignore if using GPS)", float),
             "i2c_servo_scl": ("Servo SCL pin#", int),
             "i2c_servo_sda": ("Servo SDA pin#", int),
             "i2c_servo_address": ("Servo address (in decimal)", int),
@@ -51,7 +54,8 @@ class AntennyClient(object):
             "elevation_max_rate": ("Servo elevation max rate", float),
             "azimuth_max_rate": ("Servo azimuth max rate", float),
             "use_webrepl": ("Use WebREPL", bool),
-            "use_telemetry": ("Use Telemetry", bool)
+            "use_telemetry": ("Use Telemetry", bool),
+            "enable_demo": ("Enable movement demo (short pin#15 to ground)", bool)
         }
 
     def initialize(self, fe: MpFileExplorer):
@@ -95,7 +99,7 @@ class AntennyClient(object):
         self.guard_open()
         self.guard_init()
         self.safemode_guard()
-        self.invoker.set_elevation_degree(az)
+        self.invoker.set_azimuth_degree(az)
 
     @exception_handler
     def antkontrol(self, mode):
@@ -123,7 +127,9 @@ class AntennyClient(object):
         self.guard_open()
         self.guard_init()
         self.invoker.set_tracking(True)
-        asyncio.run(self._start_track(sat_name))
+        latitude = float(self.invoker.config_get("latitude"))
+        longitude = float(self.invoker.config_get("longitude"))
+        asyncio.run(self._start_track(sat_name, (latitude, longitude)))
 
     @exception_handler
     def cancel(self):
@@ -324,9 +330,8 @@ class AntennyClient(object):
             self.invoker.set_azimuth_degree(azimuth)
             sleep(2)
 
-    async def _start_track(self, sat_name):
+    async def _start_track(self, sat_name, coords):
         """Track a satellite across the sky"""
-        coords = (40.0, -73.0)
         tle_data_encoded = await SatelliteScraper.load_tle()
         tle_data = parse_tle_file(tle_data_encoded)
         observer = SatelliteObserver.parse_tle(coords, sat_name, tle_data)
@@ -357,6 +362,7 @@ class AntennyClient(object):
         except KeyboardInterrupt:
             print("WiFi setup canceled, using previous settings")
 
+    @exception_handler
     def bno_test(self):
         self.guard_open()   # No need to guard for antenna initialization when doing diagnostics
 
@@ -378,6 +384,7 @@ class AntennyClient(object):
         print("BNO connection established?", bno_test_diagnostics.bno_object_created)
         print("BNO calibrated?", bno_test_diagnostics.bno_object_calibrated)
 
+    @exception_handler
     def pwm_test(self):
         self.guard_open()   # No need to guard for antenna initialization when doing diagnostics
 
